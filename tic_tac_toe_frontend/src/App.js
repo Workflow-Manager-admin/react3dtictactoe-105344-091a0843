@@ -1,48 +1,532 @@
-import React, { useState, useEffect } from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { useState, useEffect } from "react";
+import "./App.css";
+
+/**
+ * Colors as per requirement.
+ */
+const COLORS = {
+  primary: "#1976d2",
+  accent: "#ffab00",
+  secondary: "#424242",
+  background: "#fff",
+  boardBase: "#F7F9FB",
+  cell: "#e3eaf3",
+  winHighlight: "#ffab00",
+  outline: "#1976d2"
+};
+
+const PLAYER_X = "X";
+const PLAYER_O = "O";
+const GAME_SIZE = 3; // 3x3x3
+
+/**
+ * Generates an empty 3x3x3 board.
+ * @returns {string[][][]} Empty board (filled with "")
+ */
+function getEmptyBoard() {
+  return Array(GAME_SIZE)
+    .fill()
+    .map(() =>
+      Array(GAME_SIZE)
+        .fill()
+        .map(() => Array(GAME_SIZE).fill(""))
+    );
+}
+
+/**
+ * All 3D win line patterns on a 3x3x3 board.
+ */
+function getAllWinLines() {
+  const lines = [];
+
+  // Straight lines (x, y, or z axis aligned)
+  for (let i = 0; i < GAME_SIZE; i++) {
+    for (let j = 0; j < GAME_SIZE; j++) {
+      // Along z (vertical in layer)
+      lines.push([
+        [i, j, 0],
+        [i, j, 1],
+        [i, j, 2],
+      ]);
+      // Along y (row in all layers)
+      lines.push([
+        [i, 0, j],
+        [i, 1, j],
+        [i, 2, j],
+      ]);
+      // Along x (col in all layers)
+      lines.push([
+        [0, i, j],
+        [1, i, j],
+        [2, i, j],
+      ]);
+    }
+  }
+
+  // Diagonals in each of the 3-layer directions
+  for (let i = 0; i < GAME_SIZE; i++) {
+    // Diags in xy, fixed z
+    lines.push([
+      [0, 0, i],
+      [1, 1, i],
+      [2, 2, i],
+    ]);
+    lines.push([
+      [2, 0, i],
+      [1, 1, i],
+      [0, 2, i],
+    ]);
+    // Diags in xz, fixed y
+    lines.push([
+      [0, i, 0],
+      [1, i, 1],
+      [2, i, 2],
+    ]);
+    lines.push([
+      [2, i, 0],
+      [1, i, 1],
+      [0, i, 2],
+    ]);
+    // Diags in yz, fixed x
+    lines.push([
+      [i, 0, 0],
+      [i, 1, 1],
+      [i, 2, 2],
+    ]);
+    lines.push([
+      [i, 2, 0],
+      [i, 1, 1],
+      [i, 0, 2],
+    ]);
+  }
+
+  // Four main body diagonals (corner to opposite corner through 3D)
+  lines.push([
+    [0, 0, 0],
+    [1, 1, 1],
+    [2, 2, 2],
+  ]);
+  lines.push([
+    [2, 0, 0],
+    [1, 1, 1],
+    [0, 2, 2],
+  ]);
+  lines.push([
+    [0, 2, 0],
+    [1, 1, 1],
+    [2, 0, 2],
+  ]);
+  lines.push([
+    [2, 2, 0],
+    [1, 1, 1],
+    [0, 0, 2],
+  ]);
+
+  return lines;
+}
+const WIN_LINES = getAllWinLines();
+
+/**
+ * Checks the board for a win.
+ * @returns {null|{player:string, line:number[][]}} winning player and line if found, else null
+ */
+function checkWin(board) {
+  for (const line of WIN_LINES) {
+    const [a, b, c] = line;
+    const va = board[a[0]][a[1]][a[2]];
+    const vb = board[b[0]][b[1]][b[2]];
+    const vc = board[c[0]][c[1]][c[2]];
+    if (va && va === vb && vb === vc) {
+      return { player: va, line };
+    }
+  }
+  return null;
+}
+
+/**
+ * Checks if the board is full (for draw).
+ */
+function isFull(board) {
+  for (let x = 0; x < GAME_SIZE; x++) {
+    for (let y = 0; y < GAME_SIZE; y++) {
+      for (let z = 0; z < GAME_SIZE; z++) {
+        if (!board[x][y][z]) return false;
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * Returns a deep clone of a 3D array.
+ */
+function deepCloneBoard(board) {
+  return board.map((plane) => plane.map((row) => row.slice()));
+}
 
 // PUBLIC_INTERFACE
 function App() {
-  const [theme, setTheme] = useState('light');
+  // Player to start (selection)
+  const [startingPlayer, setStartingPlayer] = useState(PLAYER_X);
+  // Current player to move
+  const [currentPlayer, setCurrentPlayer] = useState(PLAYER_X);
+  // Game board state
+  const [board, setBoard] = useState(getEmptyBoard());
+  // Game status
+  const [winner, setWinner] = useState(null); // {player, line} or null
+  const [draw, setDraw] = useState(false);
 
-  // Effect to apply theme to document element
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
-
-  // PUBLIC_INTERFACE
-  const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+  // On new game, reset board and set current player to startingPlayer
+  const startNewGame = (nextStart) => {
+    setBoard(getEmptyBoard());
+    setWinner(null);
+    setDraw(false);
+    setCurrentPlayer(nextStart);
   };
 
+  // Handler for selecting starter
+  const handleStarterChange = (player) => {
+    setStartingPlayer(player);
+    startNewGame(player);
+  };
+
+  // Game move handler
+  const handleCellClick = (x, y, z) => {
+    if (winner || draw) return;
+    if (board[x][y][z] !== "") return; // Occupied
+
+    const newBoard = deepCloneBoard(board);
+    newBoard[x][y][z] = currentPlayer;
+
+    const win = checkWin(newBoard);
+    const boardFull = isFull(newBoard);
+
+    setBoard(newBoard);
+
+    if (win) {
+      setWinner(win);
+    } else if (boardFull) {
+      setDraw(true);
+    } else {
+      setCurrentPlayer(currentPlayer === PLAYER_X ? PLAYER_O : PLAYER_X);
+    }
+  };
+
+  // For "Reset" button
+  const handleReset = () => {
+    startNewGame(startingPlayer);
+  };
+
+  // Optionally, auto-reset current player for starter
+  useEffect(() => {
+    setCurrentPlayer(startingPlayer);
+  }, [startingPlayer]);
+
+  // For accessibility: can tab and press enter to move
+  const handleCellKeyDown = (e, x, y, z) => {
+    if (e.key === " " || e.key === "Enter") {
+      handleCellClick(x, y, z);
+    }
+  };
+
+  // Styling: highlight winning cells
+  const isCellWinning = (x, y, z) => {
+    if (!winner) return false;
+    return winner.line.some(([ix, iy, iz]) => ix === x && iy === y && iz === z);
+  };
+
+  // For responsive size
+  const [boardSize, setBoardSize] = useState(400);
+  useEffect(() => {
+    const resize = () => {
+      const size = Math.min(window.innerWidth, window.innerHeight, 420) - 36;
+      setBoardSize(size < 280 ? 260 : size);
+    };
+    window.addEventListener("resize", resize);
+    resize();
+    return () => window.removeEventListener("resize", resize);
+  }, []);
+
+  // Theme variables, injected inline to override App.css defaults
+  useEffect(() => {
+    document.body.style.setProperty("--primary", COLORS.primary);
+    document.body.style.setProperty("--accent", COLORS.accent);
+    document.body.style.setProperty("--secondary", COLORS.secondary);
+    document.body.style.setProperty("--bg-main", COLORS.background);
+  }, []);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <button 
-          className="theme-toggle" 
-          onClick={toggleTheme}
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-        </button>
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <p>
-          Current theme: <strong>{theme}</strong>
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
+    <div className="App" style={{ minHeight: "100vh", background: COLORS.background }}>
+      <header className="ttt3d-header" style={{ marginTop: "38px" }}>
+        <h1 className="ttt3d-title" style={{
+          color: COLORS.primary,
+          letterSpacing: ".03em",
+          textShadow: "0px 1px 3px #0001"
+        }}>
+          3D Tic Tac Toe
+        </h1>
       </header>
+      <main>
+        <section className="ttt3d-game-center">
+          <TicTacToe3DBoard
+            board={board}
+            winner={winner}
+            draw={draw}
+            onCellClick={handleCellClick}
+            currentPlayer={currentPlayer}
+            boardSize={boardSize}
+            isCellWinning={isCellWinning}
+            handleCellKeyDown={handleCellKeyDown}
+            colors={COLORS}
+          />
+        </section>
+        <section className="ttt3d-controls">
+          <div className="ttt3d-status">
+            {winner ? (
+              <span style={{
+                color: COLORS.accent,
+                fontWeight: 600,
+                fontSize: "1.2rem"
+              }}>
+                {winner.player} wins!
+              </span>
+            ) : draw ? (
+              <span style={{
+                color: COLORS.secondary,
+                fontWeight: 600,
+                fontSize: "1.12rem"
+              }}>It's a draw!</span>
+            ) : (
+              <span>
+                Current turn: <strong style={{
+                  color: currentPlayer === PLAYER_X ? COLORS.primary : COLORS.accent
+                }}>{currentPlayer}</strong>
+              </span>
+            )}
+          </div>
+          <div className="ttt3d-btn-row">
+            <button
+              className="ttt3d-btn"
+              onClick={handleReset}
+              style={{
+                backgroundColor: COLORS.primary,
+                color: "#fff",
+                minWidth: 84
+              }}
+              aria-label="Reset game"
+            >
+              Reset
+            </button>
+            <div className="ttt3d-player-select-group">
+              <span style={{ fontSize: 14, marginRight: 6 }}>
+                Start as:
+              </span>
+              <button
+                className={`ttt3d-btn ttt3d-btn-x ${startingPlayer === PLAYER_X ? "active" : ""}`}
+                onClick={() => handleStarterChange(PLAYER_X)}
+                style={{
+                  background: startingPlayer === PLAYER_X ? COLORS.primary : "#f1f5fc",
+                  color: startingPlayer === PLAYER_X ? "#fff" : COLORS.primary,
+                  borderColor: COLORS.primary
+                }}
+                aria-label="Player X starts"
+              >X</button>
+              <button
+                className={`ttt3d-btn ttt3d-btn-o ${startingPlayer === PLAYER_O ? "active" : ""}`}
+                onClick={() => handleStarterChange(PLAYER_O)}
+                style={{
+                  background: startingPlayer === PLAYER_O ? COLORS.accent : "#fff9ee",
+                  color: startingPlayer === PLAYER_O ? "#fff" : COLORS.accent,
+                  borderColor: COLORS.accent
+                }}
+                aria-label="Player O starts"
+              >O</button>
+            </div>
+          </div>
+        </section>
+      </main>
+      <footer className="ttt3d-footer">
+        <p style={{
+          fontSize: "0.95em",
+          color: "#888",
+          opacity: 0.77,
+          margin: 0,
+          padding: "12px"
+        }}>Modern 3D Tic Tac Toe | &copy; {new Date().getFullYear()}</p>
+      </footer>
     </div>
+  );
+}
+
+/**
+ * 3D Tic Tac Toe Board with interactive "pseudo-3D" look. 
+ * Each layer is rendered at an offset for visual depth.
+ */
+// PUBLIC_INTERFACE
+function TicTacToe3DBoard({
+  board,
+  winner,
+  draw,
+  onCellClick,
+  currentPlayer,
+  boardSize,
+  isCellWinning,
+  handleCellKeyDown,
+  colors
+}) {
+  // 3 layers stacked in depth, render "front" first (z = 0), "back" last (z = 2)
+  const LAYERS = [0, 1, 2];
+  // For pseudo-3D effect, each deeper layer is offset
+  const LAYER_OFFSETS = [
+    { left: 0, top: 0, shadow: "0 7px 22px #1976d21a" },    // z=0
+    { left: 38, top: 34, shadow: "0 2px 10px #ffab0030" },  // z=1
+    { left: 68, top: 64, shadow: "0 0px 0px #0000" }        // z=2
+  ];
+  const cellSize = Math.floor((boardSize - 80) / 3);
+
+  return (
+    <div className="ttt3d-board-wrapper"
+      style={{
+        width: boardSize,
+        height: boardSize * 0.75 + 80,
+        margin: "0 auto",
+        position: "relative",
+        perspective: 950,
+        perspectiveOrigin: "57% 72px"
+      }}>
+      {LAYERS.slice(0).reverse().map((z) => ( // render back-most first
+        <div
+          key={z}
+          className="ttt3d-board-layer"
+          style={{
+            position: "absolute",
+            top: LAYER_OFFSETS[z].top,
+            left: LAYER_OFFSETS[z].left,
+            boxShadow: LAYER_OFFSETS[z].shadow,
+            zIndex: 10 + (2 - z),
+            borderRadius: 18 - z * 4,
+            transform: `scale(${1 - z * 0.08}) rotateY(${z * 6}deg) rotateX(${z * 4}deg)`,
+            background: colors.boardBase,
+            border: `2.5px solid ${colors.outline}`,
+            width: cellSize * 3 + 12,
+            height: cellSize * 3 + 12,
+            opacity: z === 2 ? 0.95 : 1,
+            transition: "background 0.2s, border 0.2s"
+          }}
+        >
+          {board.map((layer, x) =>
+            layer.map((row, y) =>
+              z < 3 ? (
+                <React.Fragment key={`${x}-${y}-${z}`}>
+                  <BoardCell
+                    x={x}
+                    y={y}
+                    z={z}
+                    mark={board[x][y][z]}
+                    disabled={!!winner || !!draw}
+                    onClick={onCellClick}
+                    highlight={isCellWinning(x, y, z)}
+                    tabIndex={z === 0 ? 0 : -1}
+                    cellSize={cellSize}
+                    currentPlayer={currentPlayer}
+                    handleCellKeyDown={handleCellKeyDown}
+                    colors={colors}
+                  />
+                </React.Fragment>
+              ) : null
+            )
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// PUBLIC_INTERFACE
+function BoardCell({
+  x,
+  y,
+  z,
+  mark,
+  disabled,
+  onClick,
+  highlight,
+  tabIndex,
+  cellSize,
+  currentPlayer,
+  handleCellKeyDown,
+  colors
+}) {
+  // 3D projection for cells: each layer is shifted
+  const LAYER_OFFSETS = [
+    { left: 0, top: 0 },
+    { left: 38, top: 34 },
+    { left: 68, top: 64 }
+  ];
+  const offset = LAYER_OFFSETS[z];
+
+  const left = 6 + y * cellSize;
+  const top = 6 + x * cellSize;
+
+  let markColor =
+    mark === "X"
+      ? colors.primary
+      : mark === "O"
+      ? colors.accent
+      : undefined;
+
+  return (
+    <button
+      className="ttt3d-cell"
+      type="button"
+      tabIndex={tabIndex}
+      aria-label={`cell (${x + 1},${y + 1},${z + 1})` + (mark ? `, ${mark}` : "")}
+      onClick={() => !disabled && !mark && onClick(x, y, z)}
+      onKeyDown={e => handleCellKeyDown(e, x, y, z)}
+      style={{
+        position: "absolute",
+        left: offset.left + left,
+        top: offset.top + top,
+        width: cellSize - 10,
+        height: cellSize - 10,
+        background: highlight
+          ? colors.winHighlight
+          : colors.cell,
+        color: highlight
+          ? "#fff"
+          : (markColor || "#555"),
+        border: `2px solid ${highlight
+          ? colors.winHighlight
+          : "#bfc7db"}${highlight ? "" : "60"}`,
+        borderRadius: 11,
+        boxShadow: highlight
+          ? "0 0 10px #ffab0057"
+          : "0 1px 4px #0001",
+        fontSize: Math.max(29, Math.floor(cellSize / 1.3)),
+        fontWeight: "bold",
+        textAlign: "center",
+        cursor: mark || disabled ? "not-allowed" : "pointer",
+        zIndex: 20 + z * 2 + (highlight ? 1 : 0),
+        outline: "none",
+        userSelect: "none",
+        transition: "all 0.17s cubic-bezier(.76,.09,.45,.98)"
+      }}
+      disabled={!!mark || disabled}
+    >
+      {mark && (
+        <span
+          style={{
+            textShadow:
+              highlight
+                ? "0 2px 12px #fff7, 0 1px 1px #b2400050"
+                : "0 2px 7px #0003",
+            fontSize: "1em"
+          }}
+        >
+          {mark}
+        </span>
+      )}
+    </button>
   );
 }
 

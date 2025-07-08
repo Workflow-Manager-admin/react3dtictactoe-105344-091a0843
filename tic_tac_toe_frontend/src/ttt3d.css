@@ -1,0 +1,163 @@
+:root {
+  --primary: #1976d2;
+  --accent: #ffab00;
+  --secondary: #424242;
+  --bg-main: #fff;
+  --cell-empty: #e3eaf3;
+  --board-bg: #f7f9fb;
+  --win-highlight: #ffab00;
+}
+
+body, html, #root {
+  min-height: 100vh;
+  background: var(--bg-main);
+}
+
+.App {
+  position: relative;
+  min-height: 100vh;
+  background: var(--bg-main, #fff);
+}
+
+.ttt3d-header {
+  text-align: center;
+}
+.ttt3d-title {
+  font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  margin-top: 10px;
+  letter-spacing: 0.06em;
+  color: var(--primary);
+}
+
+.ttt3d-game-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 2.2vw 0 9px 0;
+}
+
+.ttt3d-board-wrapper {
+  position: relative;
+  margin: 0 auto 10px auto;
+  background: transparent;
+  min-height: 320px;
+  max-width: 100vw;
+}
+
+.ttt3d-board-layer {
+  box-sizing: border-box;
+  background: var(--board-bg);
+  border-radius: 15px;
+  border: 2.5px solid var(--primary);
+  position: absolute;
+  transition: background 0.2s, border 0.2s;
+}
+
+.ttt3d-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--cell-empty);
+  color: var(--primary);
+  border: 2px solid #bfc7db99;
+  border-radius: 13px;
+  margin: 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: 2rem;
+  font-weight: bold;
+  outline: none;
+  transition: background 0.17s, border 0.14s, color 0.18s, box-shadow 0.18s;
+  box-shadow: 0 1px 4px #0001;
+  cursor: pointer;
+  user-select: none;
+}
+.ttt3d-cell[disabled], .ttt3d-cell:disabled {
+  cursor: not-allowed;
+  opacity: 0.82;
+}
+.ttt3d-cell:hover:not([disabled]) {
+  background: #eef4fd;
+  border-color: var(--primary);
+}
+.ttt3d-cell:active:not([disabled]) {
+  box-shadow: 0 1px 10px #1976d22d;
+}
+
+.ttt3d-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 2vw;
+  margin-bottom: 20px;
+}
+.ttt3d-status {
+  font-size: 1.09rem;
+  font-weight: 500;
+  margin-bottom: 12px;
+  min-height: 27px;
+}
+.ttt3d-btn-row {
+  display: flex;
+  align-items: center;
+  gap: 19px;
+  flex-wrap: wrap;
+}
+.ttt3d-btn {
+  font-family: inherit;
+  font-size: 1.08rem;
+  font-weight: 500;
+  padding: 8px 20px;
+  margin: 0 6px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s, color 0.19s, border 0.17s, transform 0.18s;
+  box-shadow: 0 1px 4px #0001;
+}
+.ttt3d-btn.active, .ttt3d-btn:active:not([disabled]) {
+  transform: translateY(-2px) scale(1.03);
+  border: 2px solid var(--accent);
+  box-shadow: 0 2px 14px #ffab0033;
+}
+.ttt3d-btn-x { margin-right: 4px; }
+.ttt3d-btn-o { margin-left: 2px; }
+
+.ttt3d-player-select-group {
+  display: flex;
+  align-items: center;
+  gap: 0px;
+  margin-left: 10px;
+}
+.ttt3d-player-select-group .ttt3d-btn {
+  min-width: 38px;
+  padding: 7px 10px;
+  border-width: 2px;
+}
+
+.ttt3d-footer {
+  width: 100%;
+  text-align: center;
+  font-size: 0.9rem;
+  background: transparent;
+  margin-top: 24px;
+}
+
+@media (max-width: 800px) {
+  .ttt3d-title { font-size: 2.15rem; }
+  .ttt3d-game-center { margin: 3vw 0 6px 0; }
+}
+@media (max-width: 550px) {
+  .ttt3d-header { margin-top: 16px; }
+  .ttt3d-board-wrapper {
+    width: 98vw !important;
+    min-height: 210px;
+  }
+  .ttt3d-controls { margin-bottom: 8vw; }
+}
