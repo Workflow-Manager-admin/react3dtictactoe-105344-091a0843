@@ -376,25 +376,28 @@ function TicTacToe3DBoard({
 }) {
   // 3 layers stacked in depth, render "front" first (z = 0), "back" last (z = 2)
   const LAYERS = [0, 1, 2];
-  // For pseudo-3D effect, each deeper layer is offset
+  // Layer offsets for modern 3D effect (stronger offsets for depth)
   const LAYER_OFFSETS = [
-    { left: 0, top: 0, shadow: "0 7px 22px #1976d21a" },    // z=0
-    { left: 38, top: 34, shadow: "0 2px 10px #ffab0030" },  // z=1
-    { left: 68, top: 64, shadow: "0 0px 0px #0000" }        // z=2
+    { left: 0, top: 0, shadow: "0 7px 28px #1976d240, 0 2px 16px #bfc7db33" },    // z=0 (front/top)
+    { left: 38, top: 34, shadow: "0 6px 12px #ffab0050, 0 2px 20px #bfc7db29" },  // z=1 (middle)
+    { left: 74, top: 68, shadow: "0 0px 0px #0000" }                              // z=2 (back)
   ];
   const cellSize = Math.floor((boardSize - 80) / 3);
+
+  // Only empty & valid cells should be clickable!
+  const isCellClickable = (x, y, z) => !winner && !draw && board[x][y][z] === "";
 
   return (
     <div className="ttt3d-board-wrapper"
       style={{
-        width: boardSize,
-        height: boardSize * 0.75 + 80,
+        width: boardSize + 54,
+        height: boardSize * 0.77 + 90,
         margin: "0 auto",
         position: "relative",
         perspective: 950,
         perspectiveOrigin: "57% 72px"
       }}>
-      {LAYERS.slice(0).reverse().map((z) => ( // render back-most first
+      {LAYERS.slice(0).reverse().map((z) => (
         <div
           key={z}
           className="ttt3d-board-layer"
@@ -404,13 +407,14 @@ function TicTacToe3DBoard({
             left: LAYER_OFFSETS[z].left,
             boxShadow: LAYER_OFFSETS[z].shadow,
             zIndex: 10 + (2 - z),
-            borderRadius: 18 - z * 4,
-            transform: `scale(${1 - z * 0.08}) rotateY(${z * 6}deg) rotateX(${z * 4}deg)`,
-            background: colors.boardBase,
-            border: `2.5px solid ${colors.outline}`,
-            width: cellSize * 3 + 12,
-            height: cellSize * 3 + 12,
-            opacity: z === 2 ? 0.95 : 1,
+            borderRadius: 21 - z * 5,
+            transform: `scale(${1 - z * 0.09}) rotateY(${z * 7}deg) rotateX(${z * (window.innerWidth < 520 ? 2 : 4)}deg)`,
+            background: `linear-gradient(158deg, ${colors.boardBase} 85%, #fff4c6 97%, #F7F9FB 100%)`,
+            border: `2.6px solid ${colors.outline}`,
+            width: cellSize * 3 + 18,
+            height: cellSize * 3 + 18,
+            opacity: z === 2 ? 0.925 : z === 1 ? 0.97 : 1,
+            filter: z === 2 ? "brightness(0.99) blur(.5px)" : z === 1 ? "brightness(.99)" : undefined,
             transition: "background 0.2s, border 0.2s"
           }}
         >
@@ -423,13 +427,16 @@ function TicTacToe3DBoard({
                     y={y}
                     z={z}
                     mark={board[x][y][z]}
-                    disabled={!!winner || !!draw}
-                    onClick={onCellClick}
+                    disabled={!isCellClickable(x, y, z)}
+                    // only handle true click for empty cells!
+                    onClick={isCellClickable(x, y, z) ? onCellClick : () => {}}
                     highlight={isCellWinning(x, y, z)}
-                    tabIndex={z === 0 ? 0 : -1}
+                    tabIndex={z === 0 && isCellClickable(x, y, z) ? 0 : -1}
                     cellSize={cellSize}
                     currentPlayer={currentPlayer}
-                    handleCellKeyDown={handleCellKeyDown}
+                    handleCellKeyDown={isCellClickable(x, y, z)
+                      ? handleCellKeyDown
+                      : () => {}}
                     colors={colors}
                   />
                 </React.Fragment>
@@ -461,7 +468,7 @@ function BoardCell({
   const LAYER_OFFSETS = [
     { left: 0, top: 0 },
     { left: 38, top: 34 },
-    { left: 68, top: 64 }
+    { left: 74, top: 68 }
   ];
   const offset = LAYER_OFFSETS[z];
 
@@ -475,52 +482,67 @@ function BoardCell({
       ? colors.accent
       : undefined;
 
+  const cellBG = highlight
+    ? colors.winHighlight
+    : !mark && !disabled
+    ? "#f8fbff"
+    : mark
+    ? "#e3eaf3"
+    : "#e5e5e5";
+
+  const cellBorder = highlight
+    ? `2.3px solid ${colors.winHighlight}`
+    : !mark && !disabled
+    ? `2.1px solid ${colors.primary}bb`
+    : mark
+    ? "2px solid #CDDDF7"
+    : "2px solid #bfc7db60";
+
   return (
     <button
       className="ttt3d-cell"
       type="button"
       tabIndex={tabIndex}
       aria-label={`cell (${x + 1},${y + 1},${z + 1})` + (mark ? `, ${mark}` : "")}
-      onClick={() => !disabled && !mark && onClick(x, y, z)}
-      onKeyDown={e => handleCellKeyDown(e, x, y, z)}
+      onClick={() => (disabled ? undefined : onClick(x, y, z))}
+      onKeyDown={e => (disabled ? undefined : handleCellKeyDown(e, x, y, z))}
       style={{
         position: "absolute",
         left: offset.left + left,
         top: offset.top + top,
         width: cellSize - 10,
         height: cellSize - 10,
-        background: highlight
-          ? colors.winHighlight
-          : colors.cell,
-        color: highlight
-          ? "#fff"
-          : (markColor || "#555"),
-        border: `2px solid ${highlight
-          ? colors.winHighlight
-          : "#bfc7db"}${highlight ? "" : "60"}`,
-        borderRadius: 11,
+        background: cellBG,
+        color: highlight ? "#fff" : markColor || "#b2b7bb",
+        border: cellBorder,
+        borderRadius: 13,
         boxShadow: highlight
-          ? "0 0 10px #ffab0057"
-          : "0 1px 4px #0001",
-        fontSize: Math.max(29, Math.floor(cellSize / 1.3)),
+          ? "0 0 16px #ffab0075"
+          : !mark && !disabled
+          ? "0 2px 13px #1976d22e, 0 1px 4px #0001"
+          : "0 1px 3px #0001",
+        opacity: disabled && !highlight ? 0.65 : 1,
+        fontSize: Math.max(29, Math.floor(cellSize / 1.21)),
         fontWeight: "bold",
         textAlign: "center",
-        cursor: mark || disabled ? "not-allowed" : "pointer",
+        cursor: disabled ? "not-allowed" : "pointer",
+        pointerEvents: disabled ? "none" : "auto",
         zIndex: 20 + z * 2 + (highlight ? 1 : 0),
         outline: "none",
         userSelect: "none",
         transition: "all 0.17s cubic-bezier(.76,.09,.45,.98)"
       }}
-      disabled={!!mark || disabled}
+      disabled={disabled}
     >
       {mark && (
         <span
           style={{
             textShadow:
               highlight
-                ? "0 2px 12px #fff7, 0 1px 1px #b2400050"
-                : "0 2px 7px #0003",
-            fontSize: "1em"
+                ? "0 5px 19px #fff7, 0 1px 3px #ffab0035"
+                : "0 2px 7px #0002, 0 1px 2px #ffab0011",
+            fontSize: "1em",
+            letterSpacing: ".01em"
           }}
         >
           {mark}

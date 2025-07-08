@@ -51,10 +51,11 @@ body, html, #root {
 .ttt3d-board-layer {
   box-sizing: border-box;
   background: var(--board-bg);
-  border-radius: 15px;
+  border-radius: 18px;
   border: 2.5px solid var(--primary);
   position: absolute;
-  transition: background 0.2s, border 0.2s;
+  transition: background 0.22s, border 0.18s, box-shadow 0.23s;
+  /* Enhanced shadow, strong 3D gradient and slightly increased border for modern "physical" feel */
 }
 
 .ttt3d-cell {
@@ -71,14 +72,19 @@ body, html, #root {
   font-size: 2rem;
   font-weight: bold;
   outline: none;
-  transition: background 0.17s, border 0.14s, color 0.18s, box-shadow 0.18s;
+  transition: background 0.17s, border 0.14s, color 0.18s, box-shadow 0.18s, opacity 0.17s;
   box-shadow: 0 1px 4px #0001;
   cursor: pointer;
   user-select: none;
 }
 .ttt3d-cell[disabled], .ttt3d-cell:disabled {
   cursor: not-allowed;
-  opacity: 0.82;
+  opacity: 0.6 !important;
+  background: #e6e8f099 !important;
+  color: #a5a5aa !important;
+  border-color: #c3c8cf62 !important;
+  box-shadow: none !important;
+  pointer-events: none;
 }
 .ttt3d-cell:hover:not([disabled]) {
   background: #eef4fd;
