@@ -259,11 +259,14 @@ function App() {
     <div className="App" style={{ minHeight: "100vh", background: COLORS.background }}>
       <header className="ttt3d-header" style={{ marginTop: "38px" }}>
         <h1 className="ttt3d-title" style={{
-          color: COLORS.primary,
+          color: "#ffd700",
+          fontFamily: '"Segoe UI", Roboto, Arial, sans-serif',
+          fontWeight: "bold",
+          textAlign: "center",
           letterSpacing: ".03em",
           textShadow: "0px 1px 3px #0001"
         }}>
-          3D Tic Tac Toe
+          Tic Tac Toe 3D
         </h1>
       </header>
       <main>
