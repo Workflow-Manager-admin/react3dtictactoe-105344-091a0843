@@ -2,7 +2,12 @@ import React, { useState, useEffect } from "react";
 import "./App.css";
 
 /**
- * Colors as per requirement.
+ * Theme color palette for the application's accent, primary, and secondary elements.
+ * Used throughout the UI to ensure a consistent look and feel.
+ * - primary: Main brand or X player color
+ * - accent:  Highlight/secondary player (O) and win lines
+ * - secondary: For secondary text/status, muted UI
+ * - background/boardBase/cell, etc.: Support UI coloring for board/cells/highlights
  */
 const COLORS = {
   primary: "#1976d2",
